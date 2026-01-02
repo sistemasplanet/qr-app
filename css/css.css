@@ -1,25 +1,76 @@
+/* 1. Configuración Base */
 body {
-    min-height: 100vh;
     margin: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-family: Arial, sans-serif;
+    font-family: 'Segoe UI', Arial, sans-serif;
     background-color: #f4f6f8;
+    color: #333;
+    display: block; /* Cambiado para permitir scroll en la lista */
 }
 
 .contenedor {
     width: 100%;
     max-width: 420px;
+    margin: 0 auto;
     padding: 20px;
-    text-align: center;
+    box-sizing: border-box;
+}
+
+/* 2. Pantalla de Login (Centrada) */
+#seccionLogin {
+    min-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.card-login {
+    background: white;
+    padding: 30px;
+    border-radius: 20px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+    width: 100%;
+}
+
+.input-login {
+    width: 100%;
+    padding: 15px;
+    margin-bottom: 15px;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    font-size: 16px;
+    box-sizing: border-box;
+}
+
+.btn-entrar {
+    width: 100%;
+    padding: 15px;
+    background-color: #1976d2;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+/* 3. Pantalla Principal (Encabezado y Saludo) */
+#saludoUsuario {
+    font-size: 18px;
+    color: #1976d2;
+    margin-bottom: 5px;
+    text-align: left;
 }
 
 #nombreCentro {
     font-size: 24px;
+    font-weight: bold;
+    margin-top: 0;
     margin-bottom: 25px;
+    text-align: left;
 }
 
+/* 4. Rejilla de Botones (Máquinas) */
 .botones {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -27,21 +78,38 @@ body {
 }
 
 .botones button {
-    height: 60px;
-    font-size: 16px;
+    height: 70px; /* Un poco más altos para dedos grandes */
+    font-size: 15px;
+    font-weight: 600;
     border: none;
-    border-radius: 10px;
-    background-color: #1976d2;
-    color: white;
+    border-radius: 12px;
+    background-color: white;
+    color: #1976d2;
+    border: 2px solid #1976d2;
+    transition: all 0.2s;
 }
 
 .botones button:active {
-    background-color: #0f4fa8;
+    background-color: #1976d2;
+    color: white;
+    transform: scale(0.96);
 }
 
-#camara {
+/* 5. Cámara y Lector */
+#reader {
     margin-top: 20px;
     width: 100%;
-    border-radius: 12px;
-    display: none;
+    border-radius: 15px;
+    overflow: hidden;
+    border: 3px solid #333;
+}
+
+.btn-cancelar {
+    width: 100%;
+    margin-top: 15px;
+    padding: 15px;
+    background-color: #d32f2f;
+    color: white;
+    border: none;
+    border-radius: 10px;
 }

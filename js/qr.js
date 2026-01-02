@@ -1,55 +1,91 @@
-// ==========================================
-// 1. CONFIGURACIÓN GLOBAL
-// ==========================================
-const centroActual = {
-    id: 36, 
-    nombre: "Centro Comercial 36"
-};
 
 // Esta es la IP de tu computadora en la red local
 //const BASE_URL = "http://192.168.3.36:9095/api";
 const BASE_URL = "https://jerkily-unperturbing-sadie.ngrok-free.dev/api";
-const URL_API = "https://jerkily-unperturbing-sadie.ngrok-free.dev/api/scan";
+//const URL_API = "https://jerkily-unperturbing-sadie.ngrok-free.dev/api/scan";
+
+// Estos datos se llenarán al iniciar sesión
+let usuarioLogueado = {
+    nombre: "",
+    idCentro: null,
+    nombreCentro: ""
+};
 
 let maquinaSeleccionada = null;
 
 // ==========================================
-// 2. INICIALIZACIÓN AL CARGAR LA PÁGINA
+// 2. LÓGICA DE LOGIN
 // ==========================================
-document.addEventListener("DOMContentLoaded", () => {
-    // Actualizar el título del centro
-    const tituloCentro = document.getElementById("nombreCentro");
-    if (tituloCentro) {
-        tituloCentro.textContent = centroActual.nombre;
+async function procesarLogin() {
+    const user = document.getElementById("userInput").value;
+    const pass = document.getElementById("passInput").value;
+
+    if (!user || !pass) {
+        alert("Por favor rellene todos los campos");
+        return;
     }
 
-    // Cargar los botones de las máquinas desde el backend
+    try {
+        const response = await fetch(`${BASE_URL}/login`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'ngrok-skip-browser-warning': '69420'
+            },
+            body: JSON.stringify({ usuario: user, contrasenia: pass })
+        });
+
+        if (response.ok) {
+            const data = await response.json(); 
+            // data es el array [nombre, idCentro, nombreCentro] que envía el Repository
+            
+            usuarioLogueado.nombre = data[0];
+            usuarioLogueado.idCentro = data[1];
+            usuarioLogueado.nombreCentro = data[2];
+
+            mostrarInterfazPrincipal();
+        } else {
+            alert("❌ Usuario o contraseña incorrectos");
+        }
+    } catch (error) {
+        alert("❌ Error de conexión al servidor");
+        console.error(error);
+    }
+}
+
+function mostrarInterfazPrincipal() {
+    // Ocultamos login y mostramos la app
+    document.getElementById("seccionLogin").style.display = "none";
+    document.getElementById("seccionPrincipal").style.display = "block";
+
+    // Saludo Dinámico
+    document.getElementById("saludoUsuario").textContent = `Hola, ${usuarioLogueado.nombre}`;
+    document.getElementById("nombreCentro").textContent = usuarioLogueado.nombreCentro;
+
+    // Cargamos máquinas del centro obtenido en el login
     cargarBotonesDinamicos();
-});
+}
 
 // ==========================================
-// 3. CARGA DE BOTONES (GET) - CORREGIDO PARA NGROK
+// 3. CARGA DE BOTONES (GET)
 // ==========================================
 async function cargarBotonesDinamicos() {
     const contenedor = document.getElementById("contenedorBotones");
     if (!contenedor) return;
 
     try {
-        // AGREGAMOS HEADERS PARA SALTAR LA ADVERTENCIA DE NGROK
-        const response = await fetch(`${BASE_URL}/maquinas/${centroActual.id}`, {
-            headers: {
-                "ngrok-skip-browser-warning": "69420"
-            }
+        // Usamos el idCentro que vino del Login
+        const response = await fetch(`${BASE_URL}/maquinas/${usuarioLogueado.idCentro}`, {
+            headers: { "ngrok-skip-browser-warning": "69420" }
         });
         
         if (!response.ok) throw new Error("No se pudo obtener la lista de máquinas");
 
         const maquinas = await response.json();
-        
         contenedor.innerHTML = ""; 
 
         if (maquinas.length === 0) {
-            contenedor.innerHTML = "<p>No hay máquinas registradas para este centro.</p>";
+            contenedor.innerHTML = "<p>No hay máquinas para este centro.</p>";
             return;
         }
 
@@ -62,45 +98,35 @@ async function cargarBotonesDinamicos() {
         });
 
     } catch (error) {
-        console.error("Error cargando botones:", error);
-        // Si sale el error del token '<', es que falta el header de arriba
-        contenedor.innerHTML = `<p style="color:red;">Error de conexión: ${error.message}</p>`;
+        contenedor.innerHTML = `<p style="color:red;">Error: ${error.message}</p>`;
     }
 }
 
 // ==========================================
-// 4. LÓGICA DE SELECCIÓN Y ESCANEO
+// 4. LÓGICA DE ESCANEO
 // ==========================================
 function seleccionarMaquina(idMaquina) {
     maquinaSeleccionada = idMaquina;
-    console.log("Máquina seleccionada ID:", maquinaSeleccionada);
-    
-    // Función que debe estar en tu lectorQR.js para abrir la cámara
     if (typeof iniciarLectorQR === "function") {
         iniciarLectorQR();
     } else {
-        alert("Error: No se encontró la función del lector QR.");
+        alert("Error: Lector QR no disponible.");
     }
 }
 
-/**
- * Esta función es llamada automáticamente por el lector cuando detecta un código
- */
 function onQRLeido(codigoQR) {
     if (!maquinaSeleccionada) {
-        alert("⚠️ Por favor, selecciona una máquina antes de escanear.");
+        alert("⚠️ Selecciona una máquina primero.");
         return;
     }
 
-    // Los nombres de estas llaves coinciden con tu clase RegistroQR.java
     const datos = {
-        idCentroComercial: centroActual.id,
+        idCentroComercial: usuarioLogueado.idCentro, // ID dinámico
         idMaquina: maquinaSeleccionada,
-        codigo: codigoQR, // Mapea a la columna 'codigo' de docsQr
+        codigo: codigoQR,
         estado: true
     };
 
-    console.log("Datos listos para enviar:", datos);
     enviarDatosBackend(datos); 
 }
 
@@ -108,24 +134,25 @@ function onQRLeido(codigoQR) {
 // 5. ENVÍO DE DATOS (POST)
 // ==========================================
 async function enviarDatosBackend(datos) {
-    const URL_API = `${BASE_URL}/scan`; // O tu URL completa de Ngrok
-    
     try {
-        const response = await fetch(URL_API, {
+        const response = await fetch(`${BASE_URL}/scan`, {
             method: 'POST',
-            mode: 'cors',
             headers: {
                 'Accept': 'application/json',
                 'Content-Type': 'application/json',
-                'ngrok-skip-browser-warning': '69420' // <-- AGREGAR ESTO TAMBIÉN AQUÍ
+                'ngrok-skip-browser-warning': '69420'
             },
             body: JSON.stringify(datos)
         });
 
         if (response.ok) {
-            alert("✅ ¡ÉXITO! Guardado en la base de datos.");
+            const ahora = new Date();
+            alert(`✅ ¡GUARDADO!
+Fecha: ${ahora.toLocaleDateString()}
+Hora: ${ahora.toLocaleTimeString()}
+Centro: ${usuarioLogueado.nombreCentro}`);
         } else {
-            alert("❌ ERROR SERVIDOR: " + response.status);
+            alert("❌ ERROR: " + response.status);
         }
     } catch (error) {
         alert("❌ FALLO DE RED: " + error.message);
