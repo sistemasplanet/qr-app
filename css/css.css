@@ -1,0 +1,47 @@
+body {
+    min-height: 100vh;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: Arial, sans-serif;
+    background-color: #f4f6f8;
+}
+
+.contenedor {
+    width: 100%;
+    max-width: 420px;
+    padding: 20px;
+    text-align: center;
+}
+
+#nombreCentro {
+    font-size: 24px;
+    margin-bottom: 25px;
+}
+
+.botones {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+}
+
+.botones button {
+    height: 60px;
+    font-size: 16px;
+    border: none;
+    border-radius: 10px;
+    background-color: #1976d2;
+    color: white;
+}
+
+.botones button:active {
+    background-color: #0f4fa8;
+}
+
+#camara {
+    margin-top: 20px;
+    width: 100%;
+    border-radius: 12px;
+    display: none;
+}
