@@ -7,7 +7,9 @@ const centroActual = {
 };
 
 // Esta es la IP de tu computadora en la red local
-const BASE_URL = "http://192.168.3.36:9095/api";
+//const BASE_URL = "http://192.168.3.36:9095/api";
+const BASE_URL = "https://jerkily-unperturbing-sadie.ngrok-free.dev/api";
+const URL_API = "https://jerkily-unperturbing-sadie.ngrok-free.dev/api/scan";
 
 let maquinaSeleccionada = null;
 
