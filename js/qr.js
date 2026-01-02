@@ -1,15 +1,45 @@
 // ================================
-// CONFIGURACIÓN GENERAL
+// CONFIGURACIÓN REAL
 // ================================
-
-// Centro actual (luego vendrá de BD o URL)
 const centroActual = {
-    id: 1,
-    nombre: "Peluchelandia"
+    id: 36, // El ID que acabamos de probar
+    nombre: "Centro Comercial 36"
 };
 
-// Máquina seleccionada
 let maquinaSeleccionada = null;
+
+document.addEventListener("DOMContentLoaded", () => {
+    // 1. Ponemos el título
+    document.getElementById("nombreCentro").textContent = centroActual.nombre;
+
+    // 2. Cargamos los botones desde el Backend
+    cargarBotonesDinamicos();
+});
+
+async function cargarBotonesDinamicos() {
+    try {
+        const response = await fetch(`http://192.168.3.36:9095/api/maquinas/${centroActual.id}`);
+        const maquinas = await response.json();
+
+        // Buscamos el contenedor donde van los botones
+        const contenedor = document.getElementById("contenedorBotones"); 
+        contenedor.innerHTML = ""; // Limpiamos lo que haya
+
+        maquinas.forEach(m => {
+            // Creamos cada botón azul
+            const boton = document.createElement("button");
+            boton.textContent = m.nombre;
+            boton.className = "btn-maquina"; // Asegúrate de tener esta clase en tu CSS
+            
+            // Al hacer clic, se selecciona y abre la cámara
+            boton.onclick = () => seleccionarMaquina(m.idMaquina);
+            
+            contenedor.appendChild(boton);
+        });
+    } catch (error) {
+        console.error("Error cargando botones:", error);
+    }
+}
 
 
 // ================================
