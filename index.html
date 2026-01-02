@@ -8,15 +8,22 @@
 </head>
 <body>
      <div class="contenedor">
-    <h1 id="nombreCentro">Cargando centro...</h1>
+        <h1 id="nombreCentro">Cargando centro...</h1>
 
-    <div id="contenedorBotones" class="botones">
-        <p>Cargando máquinas...</p>
+        <div id="contenedorBotones" class="botones">
+            <p>Cargando máquinas...</p>
+        </div>
+
+        <hr>
+
+        <div id="contenedorCámara" style="margin-top: 20px;">
+            <div id="reader" style="width: 100%; display:none; border: 2px solid #333; border-radius: 8px; overflow: hidden;"></div>
+        </div>
+        
+        <button id="btnCerrarCamara" style="display:none; margin-top:10px; background:#ff4444; color:white; border:none; padding:10px; border-radius:5px;" onclick="detenerCamara()">
+            Cancelar Escaneo
+        </button>
     </div>
-
-    <div id="lectorQR" style="display:none;"></div>
-</div>
-
 
 
 <script src="https://unpkg.com/html5-qrcode"></script>
