@@ -58,8 +58,9 @@ function detenerCamara() {
     if (html5QrCode) {
         html5QrCode.stop().then(() => {
             document.getElementById("reader").style.display = "none";
-            console.log("Cámara detenida.");
-        }).catch(err => console.error("Error al detener cámara", err));
+            if(document.getElementById("btnCerrarCamara")) 
+                document.getElementById("btnCerrarCamara").style.display = "none";
+        });
     }
 }
 
