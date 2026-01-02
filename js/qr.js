@@ -46,40 +46,49 @@ function seleccionarMaquina(idMaquina) {
 // FUNCIÓN QUE SE LLAMA CUANDO YA SE LEYÓ EL QR
 // (esta función la usa lectorQR.js)
 // ================================
-async function onQRLeido(codigoQR) {
-    // Definimos los datos que espera tu modelo RegistroQR en Java
+function onQRLeido(codigoQR) {
+    // Preparamos el objeto con los nombres exactos de tu clase RegistroQR.java
     const datos = {
-        idMaquina: maquinaSeleccionada,
-        serieMaquina: codigoQR, // Asumimos que el QR contiene la serie
         idCentroComercial: centroActual.id,
-        estado: true // Forzamos el estado a true como pediste
+        idMaquina: maquinaSeleccionada,
+        serieMaquina: codigoQR, // El texto que leyó la cámara
+        estado: true // Esto cambiará el false por true en la BD
     };
 
-    console.log("Enviando datos al servidor:", datos);
+    console.log("Datos listos para enviar:", datos);
 
-    try {
-        // IMPORTANTE: Cambia 'localhost' por la IP de tu PC si pruebas desde un celular real
-        const response = await fetch('http://localhost:9095/api/scan', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(datos)
-        });
-
-        if (response.ok) {
-            const resultado = await response.json();
-            alert("¡Éxito! Máquina activada el: " + resultado.horaScan); 
-            // El backend ya devuelve la fecha/hora que pediste
-        } else {
-            alert("Error al guardar en el servidor");
-        }
-    } catch (error) {
-        console.error("Error de conexión:", error);
-        alert("No se pudo conectar con el servidor Java");
-    }
+    // LLAMADA AL BACKEND
+    enviarDatosBackend(datos); 
 }
 
     // AQUÍ irá luego el fetch() al backend Java
     // enviarDatosBackend(datos);
 
+// ================================
+// CONEXIÓN CON EL BACKEND JAVA
+// ================================
+async function enviarDatosBackend(datos) {
+    // 1. Usa la IP de tu PC y el puerto 9095 que configuramos
+    const URL_API = "http://192.168.3.36:9095/api/scan"; 
+
+    try {
+        const response = await fetch(URL_API, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(datos) // Convertimos el objeto JS a JSON para Java
+        });
+
+        if (response.ok) {
+            const respuesta = await response.json();
+            alert("✅ Guardado: Estado actualizado a TRUE y hora registrada.");
+            console.log("Respuesta del servidor:", respuesta);
+        } else {
+            throw new Error("Error en la respuesta del servidor");
+        }
+    } catch (error) {
+        console.error("Error de conexión:", error);
+        alert("❌ No se pudo conectar al servidor de Java. Revisa la IP y el CORS.");
+    }
+}
