@@ -28,20 +28,24 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // ==========================================
-// 3. CARGA DE BOTONES (GET)
+// 3. CARGA DE BOTONES (GET) - CORREGIDO PARA NGROK
 // ==========================================
 async function cargarBotonesDinamicos() {
     const contenedor = document.getElementById("contenedorBotones");
     if (!contenedor) return;
 
     try {
-        const response = await fetch(`${BASE_URL}/maquinas/${centroActual.id}`);
+        // AGREGAMOS HEADERS PARA SALTAR LA ADVERTENCIA DE NGROK
+        const response = await fetch(`${BASE_URL}/maquinas/${centroActual.id}`, {
+            headers: {
+                "ngrok-skip-browser-warning": "69420"
+            }
+        });
         
         if (!response.ok) throw new Error("No se pudo obtener la lista de máquinas");
 
         const maquinas = await response.json();
         
-        // Limpiamos el mensaje de "Cargando..."
         contenedor.innerHTML = ""; 
 
         if (maquinas.length === 0) {
@@ -53,15 +57,13 @@ async function cargarBotonesDinamicos() {
             const boton = document.createElement("button");
             boton.textContent = m.nombre;
             boton.className = "btn-maquina"; 
-            
-            // Al hacer clic, guardamos el ID y abrimos la cámara
             boton.onclick = () => seleccionarMaquina(m.idMaquina);
-            
             contenedor.appendChild(boton);
         });
 
     } catch (error) {
         console.error("Error cargando botones:", error);
+        // Si sale el error del token '<', es que falta el header de arriba
         contenedor.innerHTML = `<p style="color:red;">Error de conexión: ${error.message}</p>`;
     }
 }
@@ -106,17 +108,16 @@ function onQRLeido(codigoQR) {
 // 5. ENVÍO DE DATOS (POST)
 // ==========================================
 async function enviarDatosBackend(datos) {
-    const URL_API = "http://192.168.3.36:9095/api/scan";
+    const URL_API = `${BASE_URL}/scan`; // O tu URL completa de Ngrok
     
     try {
-        console.log("Intentando enviar:", datos);
-        
         const response = await fetch(URL_API, {
             method: 'POST',
-            mode: 'cors', // Forzamos modo CORS
+            mode: 'cors',
             headers: {
                 'Accept': 'application/json',
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'ngrok-skip-browser-warning': '69420' // <-- AGREGAR ESTO TAMBIÉN AQUÍ
             },
             body: JSON.stringify(datos)
         });
@@ -124,12 +125,9 @@ async function enviarDatosBackend(datos) {
         if (response.ok) {
             alert("✅ ¡ÉXITO! Guardado en la base de datos.");
         } else {
-            const errorTexto = await response.text();
-            alert("❌ ERROR SERVIDOR: " + response.status + " - " + errorTexto);
+            alert("❌ ERROR SERVIDOR: " + response.status);
         }
     } catch (error) {
-        // Si entra aquí y el firewall está OFF, es que la IP no es alcanzable
-        alert("❌ FALLO DE RED: " + error.message + 
-              "\n\nVerifica que el celular no haya saltado a Datos Móviles.");
+        alert("❌ FALLO DE RED: " + error.message);
     }
 }
