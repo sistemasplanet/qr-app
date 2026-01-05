@@ -20,36 +20,27 @@ async function procesarLogin() {
     const user = document.getElementById("userInput").value;
     const pass = document.getElementById("passInput").value;
 
-    if (!user || !pass) {
-        alert("Por favor rellene todos los campos");
-        return;
-    }
-
     try {
         const response = await fetch(`${BASE_URL}/login`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'ngrok-skip-browser-warning': '69420'
-            },
+            headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': '69420' },
             body: JSON.stringify({ usuario: user, contrasenia: pass })
         });
 
         if (response.ok) {
             const data = await response.json(); 
-            // data es el array [nombre, idCentro, nombreCentro] que envía el Repository
             
-            usuarioLogueado.nombre = data[0];
-            usuarioLogueado.idCentro = data[1];
-            usuarioLogueado.nombreCentro = data[2];
+            // MAPEO CORRECTO DE VARIABLES
+            usuarioLogueado.nombre = data.nombre;
+            usuarioLogueado.idCentro = data.idCentro;
+            usuarioLogueado.nombreCentro = data.nombreCentro;
 
             mostrarInterfazPrincipal();
         } else {
             alert("❌ Usuario o contraseña incorrectos");
         }
     } catch (error) {
-        alert("❌ Error de conexión al servidor");
-        console.error(error);
+        alert("❌ Error de conexión");
     }
 }
 
@@ -61,7 +52,6 @@ function mostrarInterfazPrincipal() {
     // Saludo Dinámico
     document.getElementById("saludoUsuario").textContent = `Hola, ${usuarioLogueado.nombre}`;
     document.getElementById("nombreCentro").textContent = usuarioLogueado.nombreCentro;
-
     // Cargamos máquinas del centro obtenido en el login
     cargarBotonesDinamicos();
 }
@@ -71,34 +61,24 @@ function mostrarInterfazPrincipal() {
 // ==========================================
 async function cargarBotonesDinamicos() {
     const contenedor = document.getElementById("contenedorBotones");
-    if (!contenedor) return;
-
     try {
-        // Usamos el idCentro que vino del Login
+        // Ahora usuarioLogueado.idCentro tiene el valor real (ej. 36)
         const response = await fetch(`${BASE_URL}/maquinas/${usuarioLogueado.idCentro}`, {
             headers: { "ngrok-skip-browser-warning": "69420" }
         });
         
-        if (!response.ok) throw new Error("No se pudo obtener la lista de máquinas");
-
         const maquinas = await response.json();
         contenedor.innerHTML = ""; 
 
-        if (maquinas.length === 0) {
-            contenedor.innerHTML = "<p>No hay máquinas para este centro.</p>";
-            return;
-        }
-
         maquinas.forEach(m => {
             const boton = document.createElement("button");
-            boton.textContent = m.nombre;
+            boton.innerHTML = `<span>📟</span><br>${m.nombre}`;
             boton.className = "btn-maquina"; 
             boton.onclick = () => seleccionarMaquina(m.idMaquina);
             contenedor.appendChild(boton);
         });
-
     } catch (error) {
-        contenedor.innerHTML = `<p style="color:red;">Error: ${error.message}</p>`;
+        contenedor.innerHTML = "<p>Error al cargar máquinas</p>";
     }
 }
 
@@ -130,6 +110,13 @@ function onQRLeido(codigoQR) {
     enviarDatosBackend(datos); 
 }
 
+
+function seleccionarMaquina(idMaquina) {
+    maquinaSeleccionada = idMaquina;
+    document.querySelectorAll('.btn-maquina').forEach(b => b.classList.remove('selected'));
+    // Lógica para abrir cámara...
+    if (typeof iniciarLectorQR === "function") iniciarLectorQR();
+}
 // ==========================================
 // 5. ENVÍO DE DATOS (POST)
 // ==========================================
