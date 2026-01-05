@@ -59,14 +59,21 @@ function configurarYEmpezar() {
     });
 }
 
-function detenerCamara() {
-    if (html5QrCode && html5QrCode.isScanning) {
-        html5QrCode.stop().then(() => {
+async function detenerCamara() {
+    if (html5QrCode) {
+        try {
+            if (html5QrCode.isScanning) {
+                await html5QrCode.stop();
+            }
+            await html5QrCode.clear();
+            const readerElement = document.getElementById("reader");
+            if (readerElement) {
+                readerElement.style.display = "none";
+                readerElement.innerHTML = ""; // Limpieza total
+            }
+        } catch (err) {
+            console.warn("La cámara no pudo detenerse formalmente, forzando cierre visual.");
             document.getElementById("reader").style.display = "none";
-            // Limpia el DOM interno que deja la librería
-            html5QrCode.clear(); 
-        }).catch(err => console.error("Error al detener:", err));
-    } else {
-        document.getElementById("reader").style.display = "none";
+        }
     }
 }

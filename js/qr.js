@@ -141,18 +141,30 @@ async function enviarDatosBackend(datos) {
         });
 
         if (response.ok) {
-            // 1. PRIMERO cerramos la cámara físicamente
+            // Guardamos la fecha/hora antes de cerrar nada
+            const ahora = new Date().toLocaleTimeString();
+            
+            // 1. Intentamos cerrar la cámara en segundo plano (sin await para no trabar el alert)
             if (typeof detenerCamara === "function") {
-                await detenerCamara(); 
+                detenerCamara().catch(err => console.log("Cámara ya estaba cerrada"));
             }
 
-            // 2. DESPUÉS mostramos el aviso
-            alert("✅ ¡GUARDADO CON ÉXITO!");
-            
-            // 3. Limpiamos variables
-            maquinaSeleccionada = null;
-        } 
+            // 2. Mostramos el mensaje de éxito inmediatamente
+            setTimeout(() => {
+                alert(`✅ ¡GUARDADO!
+Hora: ${ahora}
+Máquina: ${maquinaSeleccionada}`);
+                
+                // 3. Limpiamos la selección después del aviso
+                maquinaSeleccionada = null;
+                document.querySelectorAll('.btn-maquina').forEach(b => b.classList.remove('selected'));
+            }, 100);
+
+        } else {
+            alert("❌ Error al guardar en base de datos");
+        }
     } catch (error) {
-        alert("❌ Error de red");
+        console.error("Error de red:", error);
+        alert("❌ Error de conexión con el servidor");
     }
 }
