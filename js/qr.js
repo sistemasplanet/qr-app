@@ -82,6 +82,13 @@ async function cargarBotonesDinamicos() {
     }
 }
 
+function seleccionarMaquina(idMaquina) {
+    maquinaSeleccionada = idMaquina;
+    document.querySelectorAll('.btn-maquina').forEach(b => b.classList.remove('selected'));
+    // Lógica para abrir cámara...
+    if (typeof iniciarLectorQR === "function") iniciarLectorQR();
+}
+
 // ==========================================
 // 4. LÓGICA DE ESCANEO
 // ==========================================
@@ -100,15 +107,8 @@ function onQRLeido(codigoQR) {
         return;
     }
 
-    // --- PASO CLAVE: Detener la cámara antes de enviar datos ---
-    if (html5QrCode && html5QrCode.isScanning) {
-        html5QrCode.stop().then(() => {
-            console.log("Cámara detenida.");
-            // Ocultar el contenedor del escáner si tienes uno
-            document.getElementById("reader").style.display = "none"; 
-        }).catch(err => console.error("Error al detener cámara", err));
-    }
-
+    // Ya no detenemos la cámara aquí, 
+    // lo haremos después de confirmar que el servidor recibió los datos
     const datos = {
         idCentroComercial: usuarioLogueado.idCentro,
         idMaquina: maquinaSeleccionada,
@@ -120,12 +120,7 @@ function onQRLeido(codigoQR) {
 }
 
 
-function seleccionarMaquina(idMaquina) {
-    maquinaSeleccionada = idMaquina;
-    document.querySelectorAll('.btn-maquina').forEach(b => b.classList.remove('selected'));
-    // Lógica para abrir cámara...
-    if (typeof iniciarLectorQR === "function") iniciarLectorQR();
-}
+
 // ==========================================
 // 5. ENVÍO DE DATOS (POST)
 // ==========================================
@@ -140,31 +135,28 @@ async function enviarDatosBackend(datos) {
             body: JSON.stringify(datos)
         });
 
+        // IMPORTANTE: Primero cerramos la cámara para liberar el celular
+        if (typeof detenerCamara === "function") {
+            await detenerCamara(); 
+        }
+
         if (response.ok) {
-            // Guardamos la fecha/hora antes de cerrar nada
             const ahora = new Date().toLocaleTimeString();
             
-            // 1. Intentamos cerrar la cámara en segundo plano (sin await para no trabar el alert)
-            if (typeof detenerCamara === "function") {
-                detenerCamara().catch(err => console.log("Cámara ya estaba cerrada"));
-            }
-
-            // 2. Mostramos el mensaje de éxito inmediatamente
+            // Usamos un pequeño delay para que el alert no bloquee el cierre visual de la cámara
             setTimeout(() => {
-                alert(`✅ ¡GUARDADO!
-Hora: ${ahora}
-Máquina: ${maquinaSeleccionada}`);
+                alert(`✅ ¡GUARDADO CON ÉXITO!\n\nHora: ${ahora}\nCentro: ${usuarioLogueado.nombreCentro}`);
                 
-                // 3. Limpiamos la selección después del aviso
+                // Limpieza final
                 maquinaSeleccionada = null;
                 document.querySelectorAll('.btn-maquina').forEach(b => b.classList.remove('selected'));
-            }, 100);
+            }, 300);
 
         } else {
-            alert("❌ Error al guardar en base de datos");
+            alert("❌ El servidor recibió los datos pero hubo un error al procesar.");
         }
     } catch (error) {
         console.error("Error de red:", error);
-        alert("❌ Error de conexión con el servidor");
+        alert("❌ Error de conexión: El servidor no responde.");
     }
 }
