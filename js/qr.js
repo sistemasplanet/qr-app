@@ -100,8 +100,17 @@ function onQRLeido(codigoQR) {
         return;
     }
 
+    // --- PASO CLAVE: Detener la cámara antes de enviar datos ---
+    if (html5QrCode && html5QrCode.isScanning) {
+        html5QrCode.stop().then(() => {
+            console.log("Cámara detenida.");
+            // Ocultar el contenedor del escáner si tienes uno
+            document.getElementById("reader").style.display = "none"; 
+        }).catch(err => console.error("Error al detener cámara", err));
+    }
+
     const datos = {
-        idCentroComercial: usuarioLogueado.idCentro, // ID dinámico
+        idCentroComercial: usuarioLogueado.idCentro,
         idMaquina: maquinaSeleccionada,
         codigo: codigoQR,
         estado: true
@@ -127,7 +136,7 @@ async function enviarDatosBackend(datos) {
             headers: {
                 'Accept': 'application/json',
                 'Content-Type': 'application/json',
-                'ngrok-skip-browser-warning': '69420'
+                'ngrok-skip-browser-warning': '69420' // Necesario para que ngrok no bloquee la petición
             },
             body: JSON.stringify(datos)
         });
@@ -138,10 +147,17 @@ async function enviarDatosBackend(datos) {
 Fecha: ${ahora.toLocaleDateString()}
 Hora: ${ahora.toLocaleTimeString()}
 Centro: ${usuarioLogueado.nombreCentro}`);
+            
+            // Limpiamos la selección para permitir un nuevo escaneo
+            maquinaSeleccionada = null;
+            document.querySelectorAll('.btn-maquina').forEach(b => b.classList.remove('selected'));
+            
         } else {
-            alert("❌ ERROR: " + response.status);
+            const errorData = await response.json();
+            alert("❌ ERROR AL GUARDAR: " + (errorData.error || response.status));
         }
     } catch (error) {
-        alert("❌ FALLO DE RED: " + error.message);
+        console.error("Fallo de red:", error);
+        alert("❌ FALLO DE RED: No se pudo conectar con el servidor.");
     }
 }
