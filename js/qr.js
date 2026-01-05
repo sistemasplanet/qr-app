@@ -134,30 +134,25 @@ async function enviarDatosBackend(datos) {
         const response = await fetch(`${BASE_URL}/scan`, {
             method: 'POST',
             headers: {
-                'Accept': 'application/json',
                 'Content-Type': 'application/json',
-                'ngrok-skip-browser-warning': '69420' // Necesario para que ngrok no bloquee la petición
+                'ngrok-skip-browser-warning': '69420'
             },
             body: JSON.stringify(datos)
         });
 
         if (response.ok) {
-            const ahora = new Date();
-            alert(`✅ ¡GUARDADO!
-Fecha: ${ahora.toLocaleDateString()}
-Hora: ${ahora.toLocaleTimeString()}
-Centro: ${usuarioLogueado.nombreCentro}`);
+            // 1. PRIMERO cerramos la cámara físicamente
+            if (typeof detenerCamara === "function") {
+                await detenerCamara(); 
+            }
+
+            // 2. DESPUÉS mostramos el aviso
+            alert("✅ ¡GUARDADO CON ÉXITO!");
             
-            // Limpiamos la selección para permitir un nuevo escaneo
+            // 3. Limpiamos variables
             maquinaSeleccionada = null;
-            document.querySelectorAll('.btn-maquina').forEach(b => b.classList.remove('selected'));
-            
-        } else {
-            const errorData = await response.json();
-            alert("❌ ERROR AL GUARDAR: " + (errorData.error || response.status));
-        }
+        } 
     } catch (error) {
-        console.error("Fallo de red:", error);
-        alert("❌ FALLO DE RED: No se pudo conectar con el servidor.");
+        alert("❌ Error de red");
     }
 }

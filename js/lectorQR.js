@@ -3,19 +3,32 @@ let html5QrCode = null;
 
 async function iniciarLectorQR() {
     const readerElement = document.getElementById("reader");
-    if (readerElement) readerElement.style.display = "block";
+    if (readerElement) {
+        readerElement.style.display = "block";
+        readerElement.innerHTML = ""; // <--- LIMPIEZA FÍSICA: Borra cualquier rastro de video previo
+    }
 
-    // 1. Si la instancia no existe, la creamos UNA SOLA VEZ
-    if (!html5QrCode) {
+    try {
+        // 1. Si ya existe la instancia, la matamos por completo
+        if (html5QrCode) {
+            if (html5QrCode.isScanning) {
+                await html5QrCode.stop();
+            }
+            await html5QrCode.clear();
+            html5QrCode = null; // <--- DESTRUCCIÓN: Forzamos a que sea nulo
+        }
+
+        // 2. Pequeña pausa de 200ms para que el celular suelte la cámara
+        setTimeout(() => {
+            html5QrCode = new Html5Qrcode("reader");
+            configurarYEmpezar();
+        }, 200);
+
+    } catch (err) {
+        console.error("Error en reinicio:", err);
         html5QrCode = new Html5Qrcode("reader");
+        configurarYEmpezar();
     }
-
-    // 2. Si ya está escaneando, no hacemos nada o lo reiniciamos
-    if (html5QrCode.isScanning) {
-        await html5QrCode.stop();
-    }
-
-    configurarYEmpezar();
 }
 
 function configurarYEmpezar() {
