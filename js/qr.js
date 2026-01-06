@@ -153,7 +153,7 @@ async function enviarDatosBackend(datos) {
             }, 300);
 
         } else {
-            alert("❌ El servidor recibió los datos pero hubo un error al procesar.");
+            alert("❌ Qr repetido");
         }
     } catch (error) {
         console.error("Error de red:", error);
