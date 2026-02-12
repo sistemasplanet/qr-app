@@ -64,22 +64,17 @@ async function procesarLogin() {
 // 3. CERRAR SESIÓN (NUEVO)
 // ==========================================
 function cerrarSesion() {
-    // Limpiamos memoria
-    localStorage.removeItem("usuarioQR");
-    usuarioLogueado = { nombre: "", idCentro: null, nombreCentro: "" };
+    // 1. Limpiamos TODA la memoria del navegador
+    localStorage.clear(); 
+    sessionStorage.clear();
     
-    // Reset de inputs
-    document.getElementById("userInput").value = "";
-    document.getElementById("passInput").value = "";
-    
-    // Cambio de vista
-    document.getElementById("seccionLogin").style.display = "block";
-    document.getElementById("seccionPrincipal").style.display = "none";
-    
-    // Detener cámara si estaba abierta
+    // 2. Opcional: Detener cámara antes de salir
     if (typeof detenerCamara === "function") detenerCamara();
     
-    alert("Sesión cerrada correctamente");
+    // 3. RECARGAR LA PÁGINA (Esto es lo más importante)
+    // Al recargar, todas las variables vuelven a sus valores iniciales
+    // y como el localStorage está vacío, el window.onload lo mandará al login.
+    location.reload(); 
 }
 
 function mostrarInterfazPrincipal() {
