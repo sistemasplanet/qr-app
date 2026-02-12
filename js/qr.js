@@ -1,14 +1,21 @@
 
 // Esta es la IP de tu computadora en la red local
 //const BASE_URL = "http://192.168.3.36:9095/api";
+// Configuración de URL
 const BASE_URL = "https://jerkily-unperturbing-sadie.ngrok-free.dev/api";
-//const URL_API = "https://jerkily-unperturbing-sadie.ngrok-free.dev/api/scan";
 
-// Estos datos se llenarán al iniciar sesión
-let usuarioLogueado = {
+// 1. CARGA INICIAL: Intentar recuperar sesión guardada al abrir la página
+let usuarioLogueado = JSON.parse(localStorage.getItem("usuarioQR")) || {
     nombre: "",
     idCentro: null,
     nombreCentro: ""
+};
+
+// Si ya había alguien logueado, saltamos directo a la interfaz principal
+window.onload = () => {
+    if (usuarioLogueado.idCentro) {
+        mostrarInterfazPrincipal();
+    }
 };
 
 let maquinaSeleccionada = null;
@@ -17,8 +24,13 @@ let maquinaSeleccionada = null;
 // 2. LÓGICA DE LOGIN
 // ==========================================
 async function procesarLogin() {
-    const user = document.getElementById("userInput").value;
-    const pass = document.getElementById("passInput").value;
+    const user = document.getElementById("userInput").value.trim();
+    const pass = document.getElementById("passInput").value.trim();
+
+    if (!user || !pass) {
+        alert("⚠️ Por favor ingresa usuario y contraseña");
+        return;
+    }
 
     try {
         const response = await fetch(`${BASE_URL}/login`, {
@@ -30,39 +42,64 @@ async function procesarLogin() {
         if (response.ok) {
             const data = await response.json(); 
             
-            // MAPEO CORRECTO DE VARIABLES
-            usuarioLogueado.nombre = data.nombre;
-            usuarioLogueado.idCentro = data.idCentro;
-            usuarioLogueado.nombreCentro = data.nombreCentro;
+            // Guardamos en el objeto y en localStorage para persistencia
+            usuarioLogueado = {
+                nombre: data.nombre,
+                idCentro: data.idCentro,
+                nombreCentro: data.nombreCentro
+            };
+            localStorage.setItem("usuarioQR", JSON.stringify(usuarioLogueado));
 
             mostrarInterfazPrincipal();
         } else {
             alert("❌ Usuario o contraseña incorrectos");
         }
     } catch (error) {
-        alert("❌ Error de conexión");
+        console.error("Error Login:", error);
+        alert("❌ Error de conexión con el servidor");
     }
 }
 
+// ==========================================
+// 3. CERRAR SESIÓN (NUEVO)
+// ==========================================
+function cerrarSesion() {
+    // Limpiamos memoria
+    localStorage.removeItem("usuarioQR");
+    usuarioLogueado = { nombre: "", idCentro: null, nombreCentro: "" };
+    
+    // Reset de inputs
+    document.getElementById("userInput").value = "";
+    document.getElementById("passInput").value = "";
+    
+    // Cambio de vista
+    document.getElementById("seccionLogin").style.display = "block";
+    document.getElementById("seccionPrincipal").style.display = "none";
+    
+    // Detener cámara si estaba abierta
+    if (typeof detenerCamara === "function") detenerCamara();
+    
+    alert("Sesión cerrada correctamente");
+}
+
 function mostrarInterfazPrincipal() {
-    // Ocultamos login y mostramos la app
     document.getElementById("seccionLogin").style.display = "none";
     document.getElementById("seccionPrincipal").style.display = "block";
 
-    // Saludo Dinámico
     document.getElementById("saludoUsuario").textContent = `Hola, ${usuarioLogueado.nombre}`;
     document.getElementById("nombreCentro").textContent = usuarioLogueado.nombreCentro;
-    // Cargamos máquinas del centro obtenido en el login
+    
     cargarBotonesDinamicos();
 }
 
 // ==========================================
-// 3. CARGA DE BOTONES (GET)
+// 4. CARGA DE MÁQUINAS (DINÁMICA)
 // ==========================================
 async function cargarBotonesDinamicos() {
     const contenedor = document.getElementById("contenedorBotones");
+    if (!usuarioLogueado.idCentro) return;
+
     try {
-        // Ahora usuarioLogueado.idCentro tiene el valor real (ej. 36)
         const response = await fetch(`${BASE_URL}/maquinas/${usuarioLogueado.idCentro}`, {
             headers: { "ngrok-skip-browser-warning": "69420" }
         });
@@ -74,26 +111,21 @@ async function cargarBotonesDinamicos() {
             const boton = document.createElement("button");
             boton.innerHTML = `<span>📟</span><br>${m.nombre}`;
             boton.className = "btn-maquina"; 
-            boton.onclick = () => seleccionarMaquina(m.idMaquina);
+            boton.onclick = () => seleccionarMaquina(m.idMaquina, boton);
             contenedor.appendChild(boton);
         });
     } catch (error) {
+        console.error("Error cargar máquinas:", error);
         contenedor.innerHTML = "<p>Error al cargar máquinas</p>";
     }
 }
 
-function seleccionarMaquina(idMaquina) {
+function seleccionarMaquina(idMaquina, elementoBoton) {
     maquinaSeleccionada = idMaquina;
+    // Resaltar visualmente el botón seleccionado
     document.querySelectorAll('.btn-maquina').forEach(b => b.classList.remove('selected'));
-    // Lógica para abrir cámara...
-    if (typeof iniciarLectorQR === "function") iniciarLectorQR();
-}
+    elementoBoton.classList.add('selected');
 
-// ==========================================
-// 4. LÓGICA DE ESCANEO
-// ==========================================
-function seleccionarMaquina(idMaquina) {
-    maquinaSeleccionada = idMaquina;
     if (typeof iniciarLectorQR === "function") {
         iniciarLectorQR();
     } else {
@@ -101,14 +133,15 @@ function seleccionarMaquina(idMaquina) {
     }
 }
 
+// ==========================================
+// 5. LÓGICA DE ESCANEO Y ENVÍO
+// ==========================================
 function onQRLeido(codigoQR) {
     if (!maquinaSeleccionada) {
         alert("⚠️ Selecciona una máquina primero.");
         return;
     }
 
-    // Ya no detenemos la cámara aquí, 
-    // lo haremos después de confirmar que el servidor recibió los datos
     const datos = {
         idCentroComercial: usuarioLogueado.idCentro,
         idMaquina: maquinaSeleccionada,
@@ -119,11 +152,6 @@ function onQRLeido(codigoQR) {
     enviarDatosBackend(datos); 
 }
 
-
-
-// ==========================================
-// 5. ENVÍO DE DATOS (POST)
-// ==========================================
 async function enviarDatosBackend(datos) {
     try {
         const response = await fetch(`${BASE_URL}/scan`, {
@@ -135,28 +163,26 @@ async function enviarDatosBackend(datos) {
             body: JSON.stringify(datos)
         });
 
-        // IMPORTANTE: Primero cerramos la cámara para liberar el celular
-        if (typeof detenerCamara === "function") {
-            await detenerCamara(); 
-        }
+        if (typeof detenerCamara === "function") await detenerCamara(); 
+
+        const resultado = await response.json();
 
         if (response.ok) {
             const ahora = new Date().toLocaleTimeString();
-            
-            // Usamos un pequeño delay para que el alert no bloquee el cierre visual de la cámara
-            setTimeout(() => {
-                alert(`✅ ¡GUARDADO CON ÉXITO!\n\nHora: ${ahora}\nCentro: ${usuarioLogueado.nombreCentro}`);
-                
-                // Limpieza final
-                maquinaSeleccionada = null;
-                document.querySelectorAll('.btn-maquina').forEach(b => b.classList.remove('selected'));
-            }, 300);
-
+            alert(`✅ ¡ENTRADA VÁLIDA!\n\nHora: ${ahora}\nCentro: ${usuarioLogueado.nombreCentro}`);
         } else {
-            alert("❌ Qr repetido");
+            // Aquí mostrará el mensaje de "Tiempo agotado" que configuramos en Java
+            alert(`❌ ${resultado.mensaje || "Error al validar"}`);
         }
+        limpiarSeleccion();
+
     } catch (error) {
         console.error("Error de red:", error);
         alert("❌ Error de conexión: El servidor no responde.");
     }
+}
+
+function limpiarSeleccion() {
+    maquinaSeleccionada = null;
+    document.querySelectorAll('.btn-maquina').forEach(b => b.classList.remove('selected'));
 }
