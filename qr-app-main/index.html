@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>QR - Centro</title>
+    <link rel="stylesheet" href="css/css.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+
+<body>
+    <div class="contenedor-app">
+
+        <div id="seccionLogin" class="pantalla-login">
+            <div class="card-login">
+                <div class="icono-usuario">👤</div>
+                <h2>Control de Acceso</h2>
+                <p>Ingrese sus credenciales para continuar</p>
+
+                <div class="grupo-input">
+                    <input type="text" id="userInput" placeholder="Usuario" class="input-login">
+                </div>
+
+                <div class="grupo-input">
+                    <input type="password" id="passInput" placeholder="Contraseña" class="input-login">
+                </div>
+
+                <button class="btn-primario" onclick="procesarLogin()">INGRESAR</button>
+            </div>
+        </div>
+
+        <div id="seccionPrincipal" class="pantalla-principal" style="display: none;">
+            <header class="encabezado">
+                <h2 id="saludoUsuario">Hola</h2>
+                <h1 id="nombreCentro">Cargando centro...</h1>
+                <button onclick="location.reload()"
+                    style="float: right; background: none; border: none; color: white; font-size: 12px; cursor: pointer;">Cerrar
+                    Sesión</button>
+            </header>
+
+            <div class="cuerpo">
+                <p class="instruccion">Escanea el código QR directamente:</p>
+
+                <div id="contenedorCámara">
+                    <div id="reader"></div>
+                </div>
+
+                <button id="btnReanudar" class="btn-primario" style="display:none; margin-top: 15px;"
+                    onclick="iniciarEscaner()">
+                    Escanear Nuevo Código
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="js/lectorQR.js"></script>
+    <script src="js/qr.js"></script>
+</body>
+
+</html>
