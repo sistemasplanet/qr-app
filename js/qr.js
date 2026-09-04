@@ -1,31 +1,30 @@
 // Configuración de URL
 const BASE_URL = "https://jerkily-unperturbing-sadie.ngrok-free.dev/api";
+let codigoQRPendiente = null;
+let procesandoQR = false; // Evita escaneos múltiples accidentales
 
-// 1. CARGA INICIAL: Intentar recuperar sesión guardada al abrir la página
 let usuarioLogueado = JSON.parse(localStorage.getItem("usuarioQR")) || {
-    nombre: "",
-    idCentro: null,
-    nombreCentro: ""
+    nombre: "", idCentro: null, nombreCentro: ""
 };
 
-// Si ya había alguien logueado, saltamos directo a la interfaz principal
 window.onload = () => {
-    if (usuarioLogueado.idCentro) {
-        mostrarInterfazPrincipal();
-    }
+    if (usuarioLogueado.idCentro) mostrarInterfazPrincipal();
 };
 
 // ==========================================
-// 2. LÓGICA DE LOGIN
+// 1. LOGIN
 // ==========================================
 async function procesarLogin() {
     const user = document.getElementById("userInput").value.trim();
     const pass = document.getElementById("passInput").value.trim();
 
     if (!user || !pass) {
-        alert("⚠️ Por favor ingresa usuario y contraseña");
+        Swal.fire("Atención", "Por favor ingresa usuario y contraseña", "warning");
         return;
     }
+
+    // Mostrar estado de carga
+    Swal.fire({ title: 'Iniciando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
     try {
         const response = await fetch(`${BASE_URL}/login`, {
@@ -35,170 +34,178 @@ async function procesarLogin() {
         });
 
         if (response.ok) {
-            const data = await response.json(); 
-            
-            usuarioLogueado = {
-                nombre: data.nombre,
-                idCentro: data.idCentro,
-                nombreCentro: data.nombreCentro
-            };
+            const data = await response.json();
+            usuarioLogueado = { nombre: data.nombre, idCentro: data.idCentro, nombreCentro: data.nombreCentro };
             localStorage.setItem("usuarioQR", JSON.stringify(usuarioLogueado));
-
+            Swal.close();
             mostrarInterfazPrincipal();
         } else {
-            alert("❌ Usuario o contraseña incorrectos");
+            Swal.fire("Error", "Usuario o contraseña incorrectos", "error");
         }
     } catch (error) {
-        console.error("Error Login:", error);
-        alert("❌ Error de conexión con el servidor");
+        Swal.fire("Error de red", "No se pudo conectar con el servidor", "error");
     }
 }
 
-// ==========================================
-// 3. CERRAR SESIÓN
-// ==========================================
 function cerrarSesion() {
-    localStorage.clear(); 
-    sessionStorage.clear();
-    
+    localStorage.clear(); sessionStorage.clear();
     if (typeof detenerCamara === "function") detenerCamara();
-    
-    location.reload(); 
+    location.reload();
 }
 
 function mostrarInterfazPrincipal() {
     document.getElementById("seccionLogin").style.display = "none";
     document.getElementById("seccionPrincipal").style.display = "block";
-
     document.getElementById("saludoUsuario").textContent = `Hola, ${usuarioLogueado.nombre}`;
     document.getElementById("nombreCentro").textContent = usuarioLogueado.nombreCentro;
-    
     iniciarEscaner();
 }
 
+// ==========================================
+// 2. ESCÁNER
+// ==========================================
 function iniciarEscaner() {
-    const btnReanudar = document.getElementById("btnReanudar");
-    if (btnReanudar) btnReanudar.style.display = "none";
+    codigoQRPendiente = null;
+    procesandoQR = false;
+    
+    document.getElementById("btnReanudar").style.display = "none";
+    document.getElementById("seccionMaquinas").style.display = "none";
+    document.getElementById("contenedorCámara").style.display = "block";
 
-    // Por si veníamos de la pantalla de selección de máquinas, la ocultamos
-    // y volvemos a mostrar el contenedor de la cámara
-    const seccionMaquinas = document.getElementById("seccionMaquinas");
-    if (seccionMaquinas) seccionMaquinas.style.display = "none";
-    const camara = document.getElementById("contenedorCámara");
-    if (camara) camara.style.display = "block";
-
-    if (typeof iniciarLectorQR === "function") {
-        iniciarLectorQR();
-    } else {
-        alert("Error: Lector QR no disponible.");
-    }
+    if (typeof iniciarLectorQR === "function") iniciarLectorQR();
 }
 
-// ==========================================
-// 4. LÓGICA DE ESCANEO Y ENVÍO DIRECTO
-// ==========================================
 function onQRLeido(codigoQR) {
+    if (procesandoQR) return; // Si ya está procesando uno, ignora nuevas lecturas
+    procesandoQR = true;
+
     const datos = {
         idCentroComercial: usuarioLogueado.idCentro,
         codigo: codigoQR,
         estado: true
     };
-
-    enviarDatosBackend(datos); 
+    enviarDatosBackend(datos);
 }
 
+// ==========================================
+// 3. COMUNICACIÓN CON BACKEND
+// ==========================================
 async function enviarDatosBackend(datos) {
-    let mostrandoSeleccionMaquinas = false;
+    let requiereMaquina = false;
+    Swal.fire({ title: 'Validando ticket...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
     try {
         const response = await fetch(`${BASE_URL}/scan`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'ngrok-skip-browser-warning': '69420'
-            },
+            headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': '69420' },
             body: JSON.stringify(datos)
         });
 
-        if (typeof detenerCamara === "function") await detenerCamara(); 
-
+        if (typeof detenerCamara === "function") await detenerCamara();
         const resultado = await response.json();
 
         if (response.ok) {
-            // Ticket normal (isPromocion = 0): el backend manda la lista de máquinas
-            // del centro comercial para que el usuario elija con cuál jugar/canjear
-            if (Array.isArray(resultado.maquinas) && resultado.maquinas.length > 0) {
-                mostrarSeleccionMaquinas(resultado.maquinas);
-                mostrandoSeleccionMaquinas = true;
-            } else {
-                // Ticket promocional (isPromocion = 1), o sin máquinas asociadas
-                const ahora = new Date().toLocaleTimeString();
-                alert(`✅ ¡ENTRADA VÁLIDA!\n\nHora: ${ahora}\nCentro: ${usuarioLogueado.nombreCentro}`);
-            }
+            Swal.fire({
+                icon: 'success',
+                title: '¡ENTRADA VÁLIDA!',
+                text: `Hora: ${new Date().toLocaleTimeString()} | Centro: ${usuarioLogueado.nombreCentro}`,
+                timer: 3000,
+                showConfirmButton: false
+            });
+            codigoQRPendiente = null;
         } else {
-            alert(`❌ ${resultado.mensaje || "Error al validar"}`);
+            // Evaluamos si el error es porque falta seleccionar máquina
+            if (resultado.mensaje && resultado.mensaje.includes("seleccionar una máquina")) {
+                Swal.close();
+                codigoQRPendiente = datos.codigo;
+                requiereMaquina = true;
+                await cargarYMostrarMaquinas();
+            } else {
+                Swal.fire("Ticket Inválido", resultado.mensaje || "Error al validar", "error");
+            }
         }
     } catch (error) {
-        console.error("Error de red:", error);
-        alert("❌ Error de conexión: El servidor no responde.");
+        Swal.fire("Error", "El servidor no responde", "error");
     } finally {
-        // Si estamos mostrando la selección de máquinas, el botón "Escanear Nuevo"
-        // aparece recién cuando el usuario elige o cancela (ver ocultarSeleccionMaquinas)
-        if (!mostrandoSeleccionMaquinas) {
-            const btnReanudar = document.getElementById("btnReanudar");
-            if (btnReanudar) btnReanudar.style.display = "block";
+        if (!requiereMaquina) {
+            document.getElementById("btnReanudar").style.display = "block";
+            procesandoQR = false;
         }
     }
 }
 
 // ==========================================
-// 5. SELECCIÓN DE MÁQUINA (tickets con isPromocion = 0)
+// 4. FLUJO DE SELECCIÓN DE MÁQUINAS
 // ==========================================
-function mostrarSeleccionMaquinas(maquinas) {
-    const seccion = document.getElementById("seccionMaquinas");
-    const camara = document.getElementById("contenedorCámara");
-    if (seccion) seccion.style.display = "block";
-    if (camara) camara.style.display = "none";
+async function cargarYMostrarMaquinas() {
+    Swal.fire({ title: 'Cargando máquinas...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
+    try {
+        const response = await fetch(`${BASE_URL}/maquinas/${usuarioLogueado.idCentro}`, {
+            headers: { 'ngrok-skip-browser-warning': '69420' }
+        });
+
+        if (response.ok) {
+            const maquinas = await response.json();
+            Swal.close();
+            
+            if (maquinas.length === 0) {
+                Swal.fire("Atención", "No hay máquinas registradas en este centro.", "info");
+                cancelarSeleccionMaquina();
+                return;
+            }
+            mostrarUISeleccionMaquinas(maquinas);
+        } else {
+            Swal.fire("Error", "No se pudieron cargar las máquinas", "error");
+            cancelarSeleccionMaquina();
+        }
+    } catch (error) {
+        Swal.fire("Error", "Error de red al obtener las máquinas", "error");
+        cancelarSeleccionMaquina();
+    }
+}
+
+function mostrarUISeleccionMaquinas(maquinas) {
+    document.getElementById("seccionMaquinas").style.display = "block";
+    document.getElementById("contenedorCámara").style.display = "none";
+    
     const contenedor = document.getElementById("listaMaquinas");
-    if (!contenedor) return;
     contenedor.innerHTML = "";
 
     maquinas.forEach((maquina) => {
         const btn = document.createElement("button");
-        btn.type = "button";
         btn.className = "btn-maquina";
-        // OJO: ajusta estos nombres de campo según lo que realmente devuelva
-        // MaquinaDTO en el JSON (no tengo el archivo MaquinaDTO.java para confirmarlo)
-        const nombre = maquina.nombre || maquina.nombreMaquina || maquina.codigo
-            || `Máquina ${maquina.idMaquina ?? maquina.id ?? ""}`;
-        btn.textContent = nombre;
-        btn.onclick = () => seleccionarMaquina(maquina);
+        
+        const idMaq = maquina.idMaquina || maquina.id;
+        btn.textContent = maquina.nombre || maquina.nombreMaquina || `Máquina ${idMaq}`;
+        
+        btn.onclick = () => seleccionarMaquina(idMaq);
         contenedor.appendChild(btn);
     });
 }
 
-function seleccionarMaquina(maquina) {
-    const nombre = maquina.nombre || maquina.nombreMaquina || maquina.codigo || "la máquina seleccionada";
-    alert(`✅ Máquina seleccionada: ${nombre}`);
+function seleccionarMaquina(idMaquina) {
+    if (!codigoQRPendiente) return cancelarSeleccionMaquina();
 
-    // TODO: si hace falta avisarle al backend qué máquina eligió el usuario
-    // (por ejemplo, para registrar en qué máquina se usó el ticket),
-    // aquí se agregaría el fetch correspondiente. Por ahora solo confirma la selección.
+    const datosConMaquina = {
+        idCentroComercial: usuarioLogueado.idCentro,
+        codigo: codigoQRPendiente,
+        idMaquina: idMaquina,
+        estado: true
+    };
 
-    ocultarSeleccionMaquinas();
+    ocultarUISeleccionMaquinas();
+    enviarDatosBackend(datosConMaquina); // Reintenta el canje con la máquina elegida
 }
 
 function cancelarSeleccionMaquina() {
-    ocultarSeleccionMaquinas();
+    codigoQRPendiente = null;
+    ocultarUISeleccionMaquinas();
+    document.getElementById("btnReanudar").style.display = "block";
+    procesandoQR = false;
 }
 
-function ocultarSeleccionMaquinas() {
-    const seccion = document.getElementById("seccionMaquinas");
-    const camara = document.getElementById("contenedorCámara");
-    if (seccion) seccion.style.display = "none";
-    if (camara) camara.style.display = "block";
-
-    const btnReanudar = document.getElementById("btnReanudar");
-    if (btnReanudar) btnReanudar.style.display = "block";
+function ocultarUISeleccionMaquinas() {
+    document.getElementById("seccionMaquinas").style.display = "none";
+    document.getElementById("contenedorCámara").style.display = "block";
 }
